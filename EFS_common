@@ -1,0 +1,289 @@
+# Definition of common functions used in different scripts
+
+DD=$(which dd)
+CRYPT_SETUP=$(which cryptsetup)
+MOUNT=$(which mount)
+UMOUNT=$(which umount)
+MKFS=$(which mkfs.ext4)
+CHOWN=$(which chown)
+
+KEY_SIZE=128
+
+create_image() {
+    echo "Creating empty image file '$1' with size '$2'"
+
+    # use count=0 seek=SIZE instead of count=SIZE to speed up file creation
+    $DD if=/dev/zero of=$1 bs=1 count=0 seek=$2
+
+    if [ "$?" != "0" ];
+    then
+        echo "Failed to create image file - exiting ..."
+        return 1
+    fi
+
+    return 0
+}
+
+generate_random_key() {
+    if [ $# -lt 1 ];
+    then
+        echo "No key-file name given - exiting ..."
+        return 1
+    fi
+
+    echo "Preparing random key ($1) with $KEY_SIZE bytes"
+
+    $DD if=/dev/random of=$1 bs=1 count=$KEY_SIZE
+
+    return 0
+}
+
+check_tools() {
+    ERROR=0
+    # dd tool
+    if [ "$DD" == "" ];
+    then
+        echo "ERROR: 'dd' not found"
+        ERROR=1
+    fi
+    if [ ! -x $DD ];
+    then
+        echo "ERROR: 'dd' binary is not executable"
+        ERROR=1
+    fi
+
+    # cryptsetup
+    if [ "$CRYPT_SETUP" == "" ];
+    then
+        echo "ERROR: 'cryptsetup' not found"
+        ERROR=1
+    fi
+    if [ ! -x $CRYPT_SETUP ];
+    then
+        echo "ERROR: 'cryptsetup' binary is not executable"
+        ERROR=1
+    fi
+
+    # mount
+    if [ "$MOUNT" == "" ];
+    then
+        echo "ERROR: 'mount' not found"
+        ERROR=1
+    fi
+    if [ ! -x $MOUNT ];
+    then
+        echo "ERROR: 'mount' binary is not executable"
+        ERROR=1
+    fi
+
+    # umount
+    if [ "$UMOUNT" == "" ];
+    then
+        echo "ERROR: 'umount' not found"
+        ERROR=1
+    fi
+    if [ ! -x $UMOUNT ];
+    then
+        echo "ERROR: 'umount' binary is not executable"
+        ERROR=1
+    fi
+
+    # mkfs.ext4
+    if [ "$MKFS" == "" ];
+    then
+        echo "ERROR: 'mkfs.ext4' not found"
+        ERROR=1
+    fi
+    if [ ! -x $MKFS ];
+    then
+        echo "ERROR: 'mkfs.ext4' binary is not executable"
+        ERROR=1
+    fi
+
+    if [ $ERROR -ne 0 ];
+    then
+        # error occured
+        return 1
+    else
+        # everything OK
+        return 0
+    fi
+}
+
+luks_image_prepare() {
+    echo "Formatting, encrypting and opening disk image"
+    if [ $# -lt 2 ];
+    then
+        echo "ERROR: missing parameters for LUKS image format"
+        return 1
+    fi
+    # $1 is disk image file, $2 is key file
+    if [[ ! -r $1 || ! -w $1 ]];
+    then
+        echo "ERROR: Cannot access (r/w) image file '$1'"
+        return 1
+    fi
+
+    if [ ! -r $2 ];
+    then
+        echo "ERROR: Cannot access (r) key file '$2'"
+        return 1
+    fi
+
+    IMAGE_FILE=$1
+    KEY_FILE=$2
+
+    echo " - format luks image"
+    $CRYPT_SETUP luksFormat $IMAGE_FILE $KEY_FILE
+    if [ $? -ne 0 ];
+    then
+        echo "ERROR: $CRYPT_SETUP luksFormat failed"
+        return 1
+    fi
+
+    SUDO=''
+    if [ $EUID != 0 ];
+    then
+        echo "WARNING: Following commands need superuser permissions - running as sudo!"
+        SUDO='sudo'
+    fi
+
+    DECRYPTED_DEVICE="dev_$1"
+
+    echo " - open luks image"
+    $SUDO $CRYPT_SETUP luksOpen $IMAGE_FILE $DECRYPTED_DEVICE --key-file $KEY_FILE
+    if [ $? -ne 0 ];
+    then
+        echo "ERROR: $CRYPT_SETUP luksOpen failed"
+        return 1
+    fi
+
+    echo " - create EXT4 filesystem"
+    $SUDO $MKFS /dev/mapper/$DECRYPTED_DEVICE
+    if [ $? -ne 0 ];
+    then
+        echo "ERROR: $MKFS failed"
+        $SUDO $CRYPT_SETUP luksClose /dev/mapper/$DECRYPTED_DEVICE
+        return 1
+    fi
+
+    # Close luks device before exiting !!
+    echo " - close luks image"
+    $SUDO $CRYPT_SETUP luksClose /dev/mapper/$DECRYPTED_DEVICE
+    return 0
+}
+
+luks_image_mount() {
+    echo "Opening and mounting encrypted image file"
+
+    if [ $# -lt 3 ];
+    then
+        echo "ERROR: missing parameters for image mount"
+        return 1
+    fi
+
+    if [[ ! -e "$1" || ! -r "$1" ]];
+    then
+        echo "ERROR: Cannot read image file $1 - exiting ..."
+        return 1
+    fi
+    IMAGE_FILE=$1
+    DECRYPTED_DEVICE="dev_$IMAGE_FILE"
+
+    if [[ ! -e "$2" || ! -r "$2" ]];
+    then
+        echo "ERROR: Cannot read key file $2 - exiting ..."
+        return 1
+    fi
+    KEY_FILE=$2
+
+    if [ ! -e "$3" ];
+    then
+        echo "Mount point $3 does not exists - creating ..."
+        mkdir $3
+        if [ $? -ne 0 ];
+        then
+            echo "ERROR: Unable to create mount point - exiting ..."
+            return 1
+        fi
+    else
+        if [[ ! -r "$3" || ! -d "$3" ]];
+        then
+            echo "ERROR: Invalid mount point $3 - exiting ..."
+            return 1
+        fi
+    fi
+    MOUNT_POINT=$3
+
+    SUDO=''
+    if [ $EUID != 0 ];
+    then
+        echo "WARNING: Following commands need superuser permissions - running as sudo!"
+        SUDO='sudo'
+    fi
+
+    echo " - opening luks image"
+    $SUDO $CRYPT_SETUP luksOpen $IMAGE_FILE $DECRYPTED_DEVICE --key-file $KEY_FILE
+    if [ $? -ne 0 ];
+    then
+        echo "ERROR: $CRYPT_SETUP luksOpen failed - exiting ..."
+        return 1
+    fi
+
+    echo " - mounting opened filesystem"
+    $SUDO $MOUNT /dev/mapper/$DECRYPTED_DEVICE $MOUNT_POINT
+    if [ $? -ne 0 ];
+    then
+        echo "ERROR: Mounting failed - exiting ..."
+        $SUDO $CRYPT_SETUP luksClose /dev/mapper/$DECRYPTED_DEVICE
+        return 1
+    fi
+
+    echo " - changing owner to current user"
+    $SUDO $CHOWN -R $EUID $MOUNT_POINT
+
+    return 0
+}
+
+luks_image_umount() {
+    echo "Umounting and closing encrypted image"
+
+    if [ $# -lt 1 ];
+    then
+        echo "ERROR: missing parameters for image umount"
+        return 1
+    fi
+    MOUNT_POINT=$1
+
+    echo " - checking if $MOUNT_POINT is mounted /dev/mapper device"
+    FOUND=`$MOUNT | grep $MOUNT_POINT | grep -c "/dev/mapper/dev_"`
+    
+    if [ $FOUND -ne 1 ];
+    then
+        echo "ERROR: Failed to found proper mount point info in 'mount' list"
+        return 1
+    fi
+
+    MAPPER_DEV=`$MOUNT | grep $MOUNT_POINT | grep "/dev/mapper/" | cut -f1 -d' '`
+    echo " - /dev/mapper device found: $MAPPER_DEV"
+
+    SUDO=''
+    if [ $EUID != 0 ];
+    then
+        echo "WARNING: Following commands need superuser permissions - running as sudo!"
+        SUDO='sudo'
+    fi
+
+    echo " - unmounting mount point"
+    $SUDO $UMOUNT $MOUNT_POINT
+    if [ $? -ne 0 ];
+    then
+        echo "ERROR: Unmounting failed - exiting ..."
+        return 1
+    fi
+
+    echo " - closing LUKS device"
+    $SUDO $CRYPT_SETUP luksClose $MAPPER_DEV
+
+    return 0
+}

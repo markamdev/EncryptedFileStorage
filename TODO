@@ -1,0 +1,4 @@
+Planned works and features:
+* store/extract implementation
+* mount point deletion after unmount as EFS_umount.sh option
+* key generation based on password
