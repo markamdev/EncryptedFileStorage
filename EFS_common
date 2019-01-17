@@ -1,11 +1,17 @@
-# Definition of common functions used in different scripts
+#!/bin/bash
+# leave line above to help some editors detect proper syntax
 
+#
+# Definition of common functions used in different scripts
+#
 DD=$(which dd)
 CRYPT_SETUP=$(which cryptsetup)
 MOUNT=$(which mount)
 UMOUNT=$(which umount)
 MKFS=$(which mkfs.ext4)
 CHOWN=$(which chown)
+XXD=$(which xxd)
+SHASUM=$(which sha512sum)
 
 KEY_SIZE=128
 
@@ -34,6 +40,20 @@ generate_random_key() {
     echo "Preparing random key ($1) with $KEY_SIZE bytes"
 
     $DD if=/dev/random of=$1 bs=1 count=$KEY_SIZE
+
+    return 0
+}
+
+create_key_from_pass() {
+    if [ $# -lt 2 ];
+    then
+        echo "ERROR: Not all parameters provided - exiting ..."
+        return 1
+    fi
+    KEY_FILENAME=$1
+    KEY_PASS=$2
+
+    echo -n "$2" | $SHASUM | $XXD -r -p > $KEY_FILENAME
 
     return 0
 }
@@ -100,6 +120,30 @@ check_tools() {
         ERROR=1
     fi
 
+    # xxd
+    if [ "$XXD" == "" ];
+    then
+        echo "ERROR: 'xxd' not found"
+        ERROR=1
+    fi
+    if [ ! -x $XXD ];
+    then
+        echo "ERROR: 'xxd' binary is not executable"
+        ERROR=1
+    fi
+
+    # sha256sum
+    if [ "$SHASUM" == "" ];
+    then
+        echo "ERROR: 'sha256sum' not found"
+        ERROR=1
+    fi
+    if [ ! -x $SHASUM ];
+    then
+        echo "ERROR: 'sha256sum' binary is not executable"
+        ERROR=1
+    fi
+
     if [ $ERROR -ne 0 ];
     then
         # error occured
@@ -148,7 +192,7 @@ luks_image_prepare() {
         SUDO='sudo'
     fi
 
-    DECRYPTED_DEVICE="dev_$1"
+    DECRYPTED_DEVICE="dev_"$(basename $IMAGE_FILE)
 
     echo " - open luks image"
     $SUDO $CRYPT_SETUP luksOpen $IMAGE_FILE $DECRYPTED_DEVICE --key-file $KEY_FILE
@@ -188,7 +232,7 @@ luks_image_mount() {
         return 1
     fi
     IMAGE_FILE=$1
-    DECRYPTED_DEVICE="dev_$IMAGE_FILE"
+    DECRYPTED_DEVICE="dev_"$(basename $IMAGE_FILE)
 
     if [[ ! -e "$2" || ! -r "$2" ]];
     then

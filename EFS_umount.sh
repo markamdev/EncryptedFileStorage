@@ -10,9 +10,12 @@ cat $TOOL_DIR/EFS_header
 source $TOOL_DIR/EFS_common
 
 print_help() {
-    echo "Usage: $0 <mount_point>"
+    echo "Usage: $0 <mount_point> [options]"
     echo ""
     echo " - mount_point     directory where EFS image is mounted"
+    echo ""
+    echo "Currently supported options:"
+    echo "--del-dir     delete mount point after successful unmounting"
     echo ""
 }
 
@@ -30,12 +33,35 @@ then
     print_help
     exit 0
 fi
+MOUNT_POINT=$1
 
-luks_image_umount $1
+DEL_MOUNTPOINT=0
+if [ $# -ge 2];
+then
+    if [ "$2" == "--del-dir" ];
+    then
+        DEL_MOUNTPOINT=1
+    else
+        echo "ERROR: Invalid option '$2'"
+        print_help
+        exit 1
+    fi
+fi
+
+luks_image_umount $MOUNT_POINT
 if [ $? -ne 0 ];
 then
-    echo "ERROR: Image umounting failure"
+    echo "ERROR: Image unmounting failure"
     exit 1
+fi
+
+if [ $DEL_MOUNTPOINT -eq 1 ];
+then
+    rmdir $MOUNT_POINT
+    if [ $? -ne 0 ];
+    then
+        echo "WARNING: Failed to delete mount point after unmounting"
+    fi
 fi
 
 # Finish without any errors

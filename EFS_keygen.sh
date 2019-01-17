@@ -10,9 +10,14 @@ cat $TOOL_DIR/EFS_header
 source $TOOL_DIR/EFS_common
 
 print_help() {
-    echo "Usage: $1 <key_file>"
+    echo "Usage: $1 <key_file> [options]"
     echo ""
     echo " - key_file    name of file to store key in"
+    echo ""
+    echo "Currently supported options:"
+    echo " --from-password [pass]   generate key file from sha256sum of password string"
+    echo "                          if [pass] not given then script will ask for it."
+    echo "                          This way is more secure as password does not stay in shell history"
     echo ""
 }
 
@@ -39,11 +44,37 @@ then
     exit 1
 fi
 
-generate_random_key $KEY_FILENAME
-if [ $? -ne 0 ];
+if [ $# -gt 1 ];
 then
-    echo "ERROR: Failed to generate key"
-    exit 1
+    if [ "$2" == "--from-password" ];
+    then
+        if [ $# -eq 3 ];
+        then
+            # password given in command line
+            PASSWORD=$3
+        else
+            # password should be read from user input
+            echo "Enter password: "
+            read -s PASSWORD
+        fi
+        echo "Generating key file from password"
+        create_key_from_pass $KEY_FILENAME $PASSWORD
+        if [ $? -ne 0 ];
+        then
+            echo "ERROR: Failed to generate key from password"
+            exit 1
+        fi
+    else
+        print_help
+        exit 1
+    fi
+else
+    generate_random_key $KEY_FILENAME
+    if [ $? -ne 0 ];
+    then
+        echo "ERROR: Failed to generate key"
+        exit 1
+    fi
 fi
 
 # Finished with success
