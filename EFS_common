@@ -15,6 +15,8 @@ SHASUM=$(which sha512sum)
 
 KEY_SIZE=128
 
+APP_NAME=$(basename $0)
+
 create_image() {
     echo "Creating empty image file '$1' with size '$2'"
 

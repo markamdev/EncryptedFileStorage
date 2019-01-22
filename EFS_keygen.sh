@@ -10,7 +10,7 @@ cat $TOOL_DIR/EFS_header
 source $TOOL_DIR/EFS_common
 
 print_help() {
-    echo "Usage: $1 <key_file> [options]"
+    echo "Usage: $APP_NAME <key_file> [options]"
     echo ""
     echo " - key_file    name of file to store key in"
     echo ""

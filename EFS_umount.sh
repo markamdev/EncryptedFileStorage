@@ -10,7 +10,7 @@ cat $TOOL_DIR/EFS_header
 source $TOOL_DIR/EFS_common
 
 print_help() {
-    echo "Usage: $0 <mount_point> [options]"
+    echo "Usage: $APP_NAME <mount_point> [options]"
     echo ""
     echo " - mount_point     directory where EFS image is mounted"
     echo ""
@@ -36,7 +36,7 @@ fi
 MOUNT_POINT=$1
 
 DEL_MOUNTPOINT=0
-if [ $# -ge 2];
+if [ $# -ge 2 ];
 then
     if [ "$2" == "--del-dir" ];
     then
@@ -57,6 +57,7 @@ fi
 
 if [ $DEL_MOUNTPOINT -eq 1 ];
 then
+    echo "Removing mount point directory"
     rmdir $MOUNT_POINT
     if [ $? -ne 0 ];
     then
