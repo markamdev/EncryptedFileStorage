@@ -12,9 +12,9 @@ source $TOOL_DIR/EFS_common
 print_help() {
     echo "Usage: $APP_NAME <key_file> [options]"
     echo ""
-    echo " - key_file    name of file to store key in"
+    echo " <key_file>    name of file to store key in"
     echo ""
-    echo "Currently supported options:"
+    echo "Options:"
     echo " --from-password [pass]   generate key file from sha256sum of password string"
     echo "                          if [pass] not given then script will ask for it."
     echo "                          This way is more secure as password does not stay in shell history"

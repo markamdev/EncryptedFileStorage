@@ -10,12 +10,12 @@ cat $TOOL_DIR/EFS_header
 source $TOOL_DIR/EFS_common
 
 print_help() {
-    echo "Usage: $APP_NAME <storage_name> <storage_size> [options]"
+    echo "Usage: $APP_NAME <image_file> <image_size> [options]"
     echo ""
-    echo " -  storage_name    has to match normal filename criteria"
-    echo " -  storage_size    can be given as bytes, mega-bytes (M suffix) and so"
+    echo " <image_file>         has to match normal filename criteria"
+    echo " <image_size>         can be given as bytes, mega-bytes (M suffix) and so"
     echo ""
-    echo "Currently supported options:"
+    echo "Options:"
     echo "--use-key      <file>     use provided key file instead of generating new one "
     echo "--use-password [password] use password based key"
     echo "                          (if password not provided script will ask user for it)"
@@ -108,7 +108,7 @@ if [ $USE_PASS -eq 1 ];
 then
     echo "Preparing image with password"
     # prepare temporary key file
-    TEMP_KEY="tmpkey_$IMAGE_FILENAME"
+    TEMP_KEY="tmpkey_"$(basename $IMAGE_FILENAME)
 
     create_key_from_pass $TEMP_KEY $PASSWORD
     if [ $? -ne 0 ];

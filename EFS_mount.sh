@@ -10,12 +10,12 @@ cat $TOOL_DIR/EFS_header
 source $TOOL_DIR/EFS_common
 
 print_help() {
-    echo "Usage: $APP_NAME <storage_file> <mount_point> (--use-key <file> | --use-password [password])"
+    echo "Usage: $APP_NAME <image_file> <mount_point> (--use-key <file> | --use-password [password])"
     echo ""
-    echo " - storage_file    file with encrypted storage disk"
-    echo " - mount_point     mount target directory"
+    echo " <image_file>      file with encrypted storage disk"
+    echo " <mount_point>     mount target directory"
     echo ""
-    echo "Mount options"
+    echo "Options"
     echo "--use-key      <file>     mount with given encryption key"
     echo "--use-password [password] mount with key generated from password"
     echo "                          (ask for password if not given in command line)"
@@ -64,7 +64,7 @@ case $3 in
         # password given in command line (not recommended but supported)
         PASSWORD=$4
     fi
-    KEY_FILENAME="tmpkey_$IMAGE_FILENAME"
+    KEY_FILENAME="tmpkey_"$(basename $IMAGE_FILENAME)
     create_key_from_pass $KEY_FILENAME $PASSWORD
     if [ $? -ne 0 ];
     then

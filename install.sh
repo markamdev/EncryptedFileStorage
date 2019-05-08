@@ -4,7 +4,8 @@ INSTALL_DIR=$HOME/.EFS
 INSTALL_TAG="EFS_INSTALL_TAG"
 EFS_FILES="EFS_common EFS_header"
 EFS_FILES+=" EFS_prepare.sh"
-EFS_FILES+=" EFS_extract.sh  EFS_store.sh"
+# Do not install not implemented features
+# EFS_FILES+=" EFS_extract.sh  EFS_store.sh"
 EFS_FILES+=" EFS_mount.sh EFS_umount.sh"
 EFS_FILES+=" EFS_keygen.sh"
 RC_FILE=$HOME/.bashrc

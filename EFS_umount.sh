@@ -12,9 +12,9 @@ source $TOOL_DIR/EFS_common
 print_help() {
     echo "Usage: $APP_NAME <mount_point> [options]"
     echo ""
-    echo " - mount_point     directory where EFS image is mounted"
+    echo " <mount_point>     directory where EFS image is mounted"
     echo ""
-    echo "Currently supported options:"
+    echo "Options:"
     echo "--del-dir     delete mount point after successful unmounting"
     echo ""
 }
