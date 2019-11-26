@@ -9,6 +9,7 @@ EFS_FILES+=" EFS_prepare.sh"
 EFS_FILES+=" EFS_mount.sh EFS_umount.sh"
 EFS_FILES+=" EFS_keygen.sh"
 RC_FILE=$HOME/.bashrc
+EFS_ENV_FILE=$INSTALL_DIR/efs_env
 
 echo "Check if instal dir exists"
 if [ ! -d "$INSTALL_DIR" ];
@@ -35,14 +36,19 @@ do
     fi
 done
 
-echo "Checking if $INSTALL_DIR is in \$PATH (using .bashrc)"
-TAG_FOUND=`grep "PATH" $RC_FILE | grep -c $INSTALL_DIR`
+echo "Preparing environment settings file (overwriting if exists)"
+echo "# Environment variables needed for EncryptedFileStorage tools" > $EFS_ENV_FILE
+echo "export PATH=$INSTALL_DIR:\$PATH" >> $EFS_ENV_FILE
+echo "" >> $EFS_ENV_FILE
+
+echo "Checking if EncryptedFileStorage envs are set (using $RC_FILE)"
+TAG_FOUND=`grep "PATH" $RC_FILE | grep -c $EFS_ENV_FILE`
 if [ $TAG_FOUND -eq 0 ];
 then
     echo " - not found - adding"
     echo "" >> $RC_FILE
     echo "# Add EncryptedFileStorage tools to \$PATH" >> $RC_FILE
-    echo "export PATH=$INSTALL_DIR:$PATH" >> $RC_FILE
+    echo "source $EFS_ENV_FILE" >> $RC_FILE
 else
-    echo " - already added - skipped"
+    echo " - already set - skipping"
 fi
