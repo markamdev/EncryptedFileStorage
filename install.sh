@@ -42,7 +42,7 @@ echo "export PATH=$INSTALL_DIR:\$PATH" >> $EFS_ENV_FILE
 echo "" >> $EFS_ENV_FILE
 
 echo "Checking if EncryptedFileStorage envs are set (using $RC_FILE)"
-TAG_FOUND=`grep "PATH" $RC_FILE | grep -c $EFS_ENV_FILE`
+TAG_FOUND=`grep "$EFS_ENV_FILE" $RC_FILE | wc -l`
 if [ $TAG_FOUND -eq 0 ];
 then
     echo " - not found - adding"

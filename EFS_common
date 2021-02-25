@@ -179,19 +179,19 @@ luks_image_prepare() {
     IMAGE_FILE=$1
     KEY_FILE=$2
 
+    SUDO=''
+    if [ $EUID != 0 ];
+    then
+        echo "WARNING: Next commands need superuser permissions - running as sudo!"
+        SUDO='sudo'
+    fi
+
     echo " - format luks image"
-    $CRYPT_SETUP luksFormat $IMAGE_FILE $KEY_FILE
+    $SUDO $CRYPT_SETUP luksFormat $IMAGE_FILE $KEY_FILE
     if [ $? -ne 0 ];
     then
         echo "ERROR: $CRYPT_SETUP luksFormat failed"
         return 1
-    fi
-
-    SUDO=''
-    if [ $EUID != 0 ];
-    then
-        echo "WARNING: Following commands need superuser permissions - running as sudo!"
-        SUDO='sudo'
     fi
 
     DECRYPTED_DEVICE="dev_"$(basename $IMAGE_FILE)
